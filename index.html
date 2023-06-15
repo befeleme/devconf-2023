@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Fedora Package Update? Asses its impact in Copr</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-background-color="rgb(142, 131, 228)">
+				    <h1>
+				        Fedora Package Update? Assess its impact in Copr
+			        </h1>
+					<h2>
+				        Karolina Surma
+			        </h2>
+			    </section>
+
+				<section data-background-color="rgb(142, 131, 228)">
+				    <h2>
+				        About this talk
+			        </h2>
+				    <ul>
+        				<li>Practical approach</li>
+	        			<li>Applicable immediately for Python packages</li>
+							<ul><li>...with tweaks on others</li></ul>
+						<li>No deep dive</li>
+        			</ul>
+				</section>
+
+				<section><h2>Package update</h2>
+				    <p>Prepare, push to Rawhide, profit! (?)</p>
+				</section>
+
+				<section><h2>Cooking the distribution</h2>
+					<table>
+						<tr>
+							<td><p class="fragment">buildable and installable RPM package</p></td>
+							<td><p class="fragment">mock/ Fedora CI / Zuul CI</p></td>
+						</tr>
+						<tr>
+							<td><p class="fragment">...well integrated into the rest of the system</p></td>
+							<td><p class="fragment">impact check</p></td>
+						</tr>
+					</table>
+				</section>
+
+				<section>
+				    <h2>Prerequisites</h2>
+				    <pre><code class="language-bash" data-trim>
+                        $ dnf install \
+                            fedora-packager \
+                            fedora-repos-rawhide \
+                            copr-cli \
+                            moreutils-parallel
+                    </code></pre>
+				</section>
+
+				<section>
+				    <h2>repoquery</h2>
+					<p>Search through the repositories</p>
+				    <pre><code class="language-bash" data-trim>
+						$ repoquery -q --repo=rawhide{,-source}
+
+						# for a released Fedora it's slightly different
+						$ repoquery -q --repo=fedora{,-source} --releasever 38
+					</code></pre>
+				</section>
+
+				<section>
+				    <h2>repoquery</h2>
+					<p>Discover what comes out of your package</p>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						$ repoquery -q --repo=rawhide{,-source} --provides <pkgname>
+						
+						# package name as in the Fedora component
+						$ repoquery -q --repo=rawhide{,-source} --provides python-rich
+						python3-rich = 13.3.5-3.fc39
+
+					</script></code></pre>
+				</section>				
+
+				<section>
+				    <h2>repoquery</h2>
+					<p>Discover what requires your package to build</p>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						# Grab only source RPMs -- they require your package on build-time
+						# Use the recursive option to get the full picture of the impact
+						$ repoquery -q \
+							--repo=rawhide{,-source} \
+							--whatrequires python3-rich \
+							--recursive | grep .src$ | pkgname
+
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Copr</h2>
+					<p>
+						FAS account + API token for CLI interaction
+						-> https://copr.fedorainfracloud.org/api/
+					</p>
+				</section>
+
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Create a new Copr repository</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						# I define a handy variable to use in further commands
+						$ COPR=devconf
+						
+						$ copr create \
+							$COPR \
+							--repo='http://kojipkgs.fedoraproject.org/repos/rawhide/latest/$basearch/' \
+							--chroot fedora-rawhide-x86_64 \
+							--delete-after-days 30
+					</script></code></pre>
+				</section>
+
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Add the updated package</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						$ copr add-package-scm \
+							$COPR \
+							--clone-url https://src.fedoraproject.org/forks/<user>/rpms/<pkgname>.git \
+							--name <pkgname> \
+							--webhook-rebuild on \
+							--commit <branchname>
+						
+						# or build your local SRPM
+						$ copr build $COPR /path/to/srpm
+
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Build the package</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						$ copr build-package \
+							$COPR \ 
+							--nowait \ 
+							--name <pkgname>
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 218, 206)">
+					<h2>Find packages that pin the dependecy to a certain version</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						# In the specfile:
+						# BuildRequires: python3-rich < 14
+
+						$ for pkg in $(repoquery -q --repo=rawhide{,-source} --whatrequires python3-foo); 
+							do 
+								repoquery -q --repo=rawhide{,-source} \
+									--requires $pkg | grep -E '\bfoo\b' | grep '<' && echo -e "${pkg}\n"; 
+							done
+
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Add the dependent packages</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						$ parallel copr add-package-distgit \
+							$COPR \
+							--webhook-rebuild on \
+							--name -- \
+								$(repoquery -q --repo=rawhide{,-source} \
+									--whatrequires python3-<foo> --recursive | grep 'src$'| pkgname | sort | uniq)
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Build the dependent packages</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						$ parallel copr build-package \
+							$COPR \
+							--nowait \
+							--background \
+							--name -- \
+								$(repoquery -q --repo=rawhide{,-source} \
+									--whatrequires python3-<foo> --recursive | grep 'src$'| pkgname | sort | uniq)
+					</script></code></pre>
+				</section>
+				
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>What failed?</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						$ copr monitor \
+							$COPR \
+							--output-format text-row \
+							--fields name,state | grep failed$ | cut -f1
+						# you can create another - control - Copr using the mentioned process
+						# and build only those to look for false negatives
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 162, 218)">
+					<h2>Which failures are related to my update?</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						# What failed with update but succeeded in the control copr? 
+						$ UPDATE=$(copr monitor \
+							$COPR --output-format text-row --fields name,state \
+							| grep failed$ | cut -f1 | sort)
+
+						$ CONTROL=$(copr monitor \
+							$COPR-control --output-format text-row --fields name,state \
+							| grep succeeded$ | cut -f1 | sort)
+
+						$ comm -12 <(echo $UPDATE) <(echo $CONTROL)
+
+					</script></code></pre>
+				</section>
+
+				<section>
+					<h2>Results evaluation</h2>
+					<p>Browse the build logs - manual step &#x1F63F;</p>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						# With the data from the copr monitor you can script opening 
+						# the logs in the browser windows or go to your Copr:
+						# https://copr.fedorainfracloud.org/coprs/ksurma/devconf/packages/
+					</script></code></pre>					
+				</section>
+
+				<section data-background-color="rgb(81, 218, 206)">
+					<h2>Avoid unrelated interferences between packages</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						# Instead of just $COPR - build your packages in isolated directory
+						$ parallel copr build-package --nowait --background $COPR:custom:isolated ...
+
+						# Explore the results - add --dir option to the invocation
+						$ copr monitor $COPR \
+							--dir $COPR:custom:isolated
+
+					</script></code></pre>
+				</section>
+
+				<section>
+					<h2>Further resources</h2>
+					<p>Guide containing more details about impact checks</p>
+					<a href="https://github.com/fedora-python/pull-request-review-guide">https://github.com/fedora-python/pull-request-review-guide</a>
+					<p>Copr user documentation</p>
+					<a href="https://docs.pagure.org/copr.copr/index.html">https://docs.pagure.org/copr.copr/index.html</a>
+
+				</section>
+
+				<section data-background-color="rgb(81, 218, 206)"><h2>Thank you<br><br>Questions?</h2></section>				
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+				width: 1280,
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+	</body>
+</html>
