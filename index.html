@@ -138,7 +138,6 @@
 							$COPR \
 							--clone-url https://src.fedoraproject.org/forks/<user>/rpms/<pkgname>.git \
 							--name <pkgname> \
-							--webhook-rebuild on \
 							--commit <branchname>
 						
 						# or build your local SRPM
@@ -153,7 +152,6 @@
 
 						$ copr build-package \
 							$COPR \ 
-							--nowait \ 
 							--name <pkgname>
 					</script></code></pre>
 				</section>
