@@ -166,9 +166,9 @@
 						
 						$ copr create \
 							$COPR \
-							--repo='http://kojipkgs.fedoraproject.org/repos/rawhide/latest/$basearch/' \
 							--chroot fedora-rawhide-x86_64 \
-							--delete-after-days 30
+							--repo='http://kojipkgs.fedoraproject.org/repos/rawhide/latest/$basearch/' \
+							--delete-after-days 14
 					</script></code></pre>
 				</section>
 
@@ -179,8 +179,8 @@
 						$ copr add-package-scm \
 							$COPR \
 							--clone-url https://src.fedoraproject.org/forks/<user>/rpms/<pkgname>.git \
-							--name <pkgname> \
-							--commit <branchname>
+							--commit <branchname> \
+							--name <pkgname>
 						
 						# or build your local SRPM
 						$ copr build $COPR /path/to/srpm
