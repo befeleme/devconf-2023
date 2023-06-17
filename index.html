@@ -162,7 +162,7 @@
 				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
 
 						# I define a handy variable to use in further commands
-						$ COPR=devconf
+						$ COPR=devconf-prep
 						
 						$ copr create \
 							$COPR \
@@ -195,21 +195,6 @@
 						$ copr build-package \
 							$COPR \ 
 							--name <pkgname>
-					</script></code></pre>
-				</section>
-
-				<section data-background-color="rgb(81, 218, 206)">
-					<h2>Find packages that pin the dependecy to a certain version</h2>
-				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
-						# In the specfile:
-						# BuildRequires: python3-rich < 14
-
-						$ for pkg in $(repoquery -q --repo=rawhide{,-source} --whatrequires python3-foo); 
-							do 
-								repoquery -q --repo=rawhide{,-source} \
-									--requires $pkg | grep -E '\bfoo\b' | grep '<' && echo -e "${pkg}\n"; 
-							done
-
 					</script></code></pre>
 				</section>
 
@@ -274,8 +259,23 @@
 				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
 						# With the data from the copr monitor you can script opening 
 						# the logs in the browser windows or go to your Copr:
-						# https://copr.fedorainfracloud.org/coprs/ksurma/devconf/packages/
-					</script></code></pre>					
+						# https://copr.fedorainfracloud.org/coprs/ksurma/devconf-prep/packages/
+					</script></code></pre>
+				</section>
+
+				<section data-background-color="rgb(81, 218, 206)">
+					<h2>Find packages that pin the dependecy to a certain version</h2>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						# In the specfile:
+						# BuildRequires: python3-rich < 14
+
+						$ for pkg in $(repoquery -q --repo=rawhide{,-source} --whatrequires python3-foo); 
+							do 
+								repoquery -q --repo=rawhide{,-source} \
+									--requires $pkg | grep -E '\bfoo\b' | grep '<' && echo -e "${pkg}\n"; 
+							done
+
+					</script></code></pre>
 				</section>
 
 				<section>
