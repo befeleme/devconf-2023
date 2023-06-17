@@ -106,6 +106,35 @@
 
 				<section>
 				    <h2>repoquery</h2>
+					<p>Build and run time dependencies</p>
+				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+
+						# What does my package require on build time? (rawhide-source)
+						$ repoquery -q --repo=rawhide{,-source} --requires python-rich
+						(python3dist(markdown-it-py) < 3~~ with python3dist(markdown-it-py) >= 2.2)
+						(python3dist(pygments) < 3~~ with python3dist(pygments) >= 2.13)
+						(python3dist(toml) if python3-devel < 3.11)
+						pyproject-rpm-macros
+						python3-devel
+						python3dist(attrs)
+						python3dist(packaging)
+						python3dist(pip) >= 19
+						python3dist(poetry-core) >= 1
+						python3dist(pytest)
+						python3dist(setuptools)
+					</script></code></pre>
+					<pre><code class="language-bash" data-trim data-noescape><script type="text/template">
+						# What does my package require on run time? (rawhide)
+						$ repoquery -q --repo=rawhide{,-source} --requires python3-rich
+						(python3.11dist(markdown-it-py) < 3~~ with python3.11dist(markdown-it-py) >= 2.2)
+						(python3.11dist(pygments) < 3~~ with python3.11dist(pygments) >= 2.13)
+						python(abi) = 3.11
+
+					</script></code></pre>
+				</section>
+
+				<section>
+				    <h2>repoquery</h2>
 					<p>Discover what requires your package to build</p>
 				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
 
@@ -142,7 +171,6 @@
 							--delete-after-days 30
 					</script></code></pre>
 				</section>
-
 
 				<section data-background-color="rgb(81, 162, 218)">
 					<h2>Add the updated package</h2>
@@ -211,7 +239,7 @@
 									--whatrequires python3-<foo> --recursive | grep 'src$'| pkgname | sort | uniq)
 					</script></code></pre>
 				</section>
-				
+
 				<section data-background-color="rgb(81, 162, 218)">
 					<h2>What failed?</h2>
 				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
@@ -228,16 +256,15 @@
 					<h2>Which failures are related to my update?</h2>
 				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
 						# What failed with update but succeeded in the control copr? 
-						$ UPDATE=$(copr monitor \
+						$ copr monitor \
 							$COPR --output-format text-row --fields name,state \
-							| grep failed$ | cut -f1 | sort)
+							| grep failed$ | cut -f1 | sort > update
 
-						$ CONTROL=$(copr monitor \
+						$ copr monitor \
 							$COPR-control --output-format text-row --fields name,state \
-							| grep succeeded$ | cut -f1 | sort)
+							| grep succeeded$ | cut -f1 | sort > control
 
-						$ comm -12 <(echo $UPDATE) <(echo $CONTROL)
-
+						$ comm -12 update control
 					</script></code></pre>
 				</section>
 
@@ -251,29 +278,17 @@
 					</script></code></pre>					
 				</section>
 
-				<section data-background-color="rgb(81, 218, 206)">
-					<h2>Avoid unrelated interferences between packages</h2>
-				    <pre><code class="language-bash" data-trim data-noescape><script type="text/template">
-						# Instead of just $COPR - build your packages in isolated directory
-						$ parallel copr build-package --nowait --background $COPR:custom:isolated ...
-
-						# Explore the results - add --dir option to the invocation
-						$ copr monitor $COPR \
-							--dir $COPR:custom:isolated
-
-					</script></code></pre>
-				</section>
-
 				<section>
 					<h2>Further resources</h2>
 					<p>Guide containing more details about impact checks</p>
 					<a href="https://github.com/fedora-python/pull-request-review-guide">https://github.com/fedora-python/pull-request-review-guide</a>
 					<p>Copr user documentation</p>
 					<a href="https://docs.pagure.org/copr.copr/index.html">https://docs.pagure.org/copr.copr/index.html</a>
-
+					<p>This presentation</p>
+					<a href="https://befeleme.github.io/devconf-2023">https://befeleme.github.io/devconf-2023</a>
 				</section>
 
-				<section data-background-color="rgb(81, 218, 206)"><h2>Thank you<br><br>Questions?</h2></section>				
+				<section data-background-color="rgb(142, 131, 228)"><h2>Thank you<br><br>Questions?</h2></section>
 			</div>
 		</div>
 
